@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import Shares from './components/Shares.vue'
 import UploadSection from './components/UploadSection.vue'
+import Startup from './components/Startup.vue'
 
 // Reactive variables for form data
 const apiKey = ref('')
@@ -15,6 +16,7 @@ const categories = [
   { id: 'upload', name: 'File Upload' },
   { id: 'context-menu', name: 'Context Menu' },
   { id: 'shares', name: 'Recent Shares' },
+  { id: 'startup', name: 'Startup' },
   { id: 'about', name: 'About' },
 ]
 
@@ -69,30 +71,29 @@ const checkContextMenu = () => {
 
 // Function to toggle context menu
 const toggleContextMenu = () => {
-  if (contextMenuEnabled.value) {
-    window.electron.ipcRenderer.send('enable-context-menu')
+  const eventName = contextMenuEnabled.value ? 'enable-context-menu' : 'remove-context-menu'
 
-    // Listen for the response
-    window.electron.ipcRenderer.once('enable-context-menu-response', (event, response) => {
-      if (!response.success) {
-        // Alert and ask the user to restart the app as Admin as it may require elevated permissions
-        alert('Failed to enable context menu. Please restart the app as Administrator.')
-      }
-    })
-  } else {
-    window.electron.ipcRenderer.send('remove-context-menu')
-  }
+  window.electron.ipcRenderer.send(eventName)
+
+  // Listen for the response
+  window.electron.ipcRenderer.once(`${eventName}-response`, (event, response) => {
+    if (!response.success) {
+      // Reverse the value if the configuration failed
+      contextMenuEnabled.value = !contextMenuEnabled.value
+      alert(`Failed to configure context menu. Please restart the app as Administrator.`)
+    }
+  })
 }
 
 // Toggle the visibility of the API key
 const toggleApiKeyVisibility = () => {
-  isApiKeyVisible.value = !isApiKeyVisible.value;
-};
+  isApiKeyVisible.value = !isApiKeyVisible.value
+}
 
 // Function to check if the API key is set
 const isApiKeySet = () => {
-  return apiKey.value !== '';
-};
+  return apiKey.value !== ''
+}
 
 onMounted(() => {
   loadApiKey()
@@ -198,6 +199,9 @@ onMounted(() => {
 
       <!-- Shares Section -->
       <Shares />
+
+      <!-- Startup Section -->
+      <Startup />
 
       <!-- About Section -->
       <section id="about">

@@ -1,12 +1,13 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 
 const selectedFile = ref(null)
 const createPrivateLink = ref(true)
 const enablePassword = ref(false)
 const password = ref('')
 const confirmPassword = ref('')
-const expiry = ref('24h') // Default expiry
+const expiry = ref('1w') // Default expiry
+const uploadProgress = ref(0) // Progress state
 
 // Listen for the data when the component is mounted
 onMounted(() => {
@@ -15,24 +16,23 @@ onMounted(() => {
       return
     }
 
-    // If the data contains a filePath and it's not null, we simulate setting the file
-    selectedFile.value = data.filePath
-    // Simulate selecting the file in the file input using FileReader
-    const fileInput = document.getElementById('file-input')
-    const file = new File([data.filePath], data.filePath, { type: 'application/octet-stream' })
+    // Handle file path sent via the IPC event
+    selectedFile.value = data.filePath;
 
-    // Trigger the file change manually
+    // Simulate selecting the file in the file input
+    const fileInput = document.getElementById('file-input');
+    const file = new File([data.filePath], data.filePath.split('/').pop(), {
+      type: 'application/octet-stream',
+    });
+
+    // Trigger file input change manually
     const dataTransfer = new DataTransfer()
     dataTransfer.items.add(file)
     fileInput.files = dataTransfer.files
-
-    // Update the selected file reference
     selectedFile.value = file
   })
 })
 
-// Clean up the event listener when the component is destroyed
-import { onBeforeUnmount } from 'vue'
 onBeforeUnmount(() => {
   window.electron.ipcRenderer.removeAllListeners('upload-window-data')
 })
@@ -41,7 +41,7 @@ function onFileChange(event) {
   selectedFile.value = event.target.files[0]
 }
 
-function handleFileUpload() {
+async function handleFileUpload() {
   if (!selectedFile.value) {
     alert('Please select a file.')
     return
@@ -50,7 +50,46 @@ function handleFileUpload() {
     alert('Passwords do not match.')
     return
   }
-  alert('Uploading file...') // Placeholder
+
+  // ---------------------
+  // Prepare upload data
+  const uploadData = {
+    filePath: selectedFile.value.path || selectedFile.value.name,
+    createPrivateLink: createPrivateLink.value,
+    enablePassword: enablePassword.value,
+    password: enablePassword.value ? password.value : null,
+    expiry: expiry.value
+  }
+
+  // Send data to the main process and handle upload progress
+  try {
+    // alert('Uploading file...');
+    await new Promise((resolve, reject) => {
+      // Listen for upload progress
+      window.electron.ipcRenderer.on('upload-progress', (event, progress) => {
+        uploadProgress.value = progress // Update progress bar
+      })
+
+      // Send the upload request to the main process
+      window.electron.ipcRenderer.send('start-upload', uploadData)
+
+      // Handle upload completion or failure
+      window.electron.ipcRenderer.once('upload-complete', (event, success) => {
+        if (success) {
+          resolve()
+        } else {
+          reject(new Error('Upload failed.'))
+        }
+      })
+    })
+
+    alert('Upload complete!')
+  } catch (error) {
+    alert(`Error: ${error.message}`)
+  } finally {
+    // Reset progress after upload
+    uploadProgress.value = 0
+  }
 }
 
 function cancelUpload() {
@@ -132,6 +171,7 @@ function cancelUpload() {
             v-model="expiry"
             class="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
+            <option value="never">Never</option>
             <option value="24h">24 Hours</option>
             <option value="1w">1 Week</option>
             <option value="1m">1 Month</option>
@@ -142,7 +182,11 @@ function cancelUpload() {
 
         <!-- Progress Bar -->
         <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-          <div class="h-full bg-blue-500 transition-all" style="width: 0%" id="progress-bar"></div>
+          <div
+            class="h-full bg-blue-500 transition-all"
+            :style="{ width: `${uploadProgress}%` }"
+            id="progress-bar"
+          ></div>
         </div>
 
         <!-- Buttons -->

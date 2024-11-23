@@ -5,7 +5,8 @@ import icon from '../../resources/icon.png?asset'
 import appIcon from '../../build/icon.ico?asset'
 import { createContextMenu, removeContextMenu } from './context-menu'
 import {
-  // ensureConfigDirExists,
+  saveStartupStatus,
+  loadStartupStatus,
   isContextMenuStatusSaved,
   saveContextMenuStatus,
   loadContextMenuStatus,
@@ -13,26 +14,12 @@ import {
   loadApiKey
 } from './config'
 import { fetchShares, deleteShare } from './shares'
-
-// (async () => {
-//   const contextMenu = await import('electron-context-menu');
-
-//   contextMenu.default({
-//     prepend: (defaultActions, params, browserWindow) => [
-//       {
-//         label: 'Share with Up2Share',
-//         click: () => {
-//           browserWindow.webContents.send('open-share-window', params.file);
-//         },
-//       },
-//     ],
-//   });
-// })();
+import { configureStartup } from './startup'
+import { createApiClient, ResumableUploadHandler } from './upload'
+import path from 'path'
 
 // Initialize the app requirements
-(async () => {
-  // ensureConfigDirExists()
-
+;(async () => {
   // Register the context menu for the app
   if (!isContextMenuStatusSaved()) {
     console.log('Enforcing context menu...')
@@ -45,7 +32,7 @@ import { fetchShares, deleteShare } from './shares'
       console.error('Failed to enforce context menu:', error)
     }
   }
-})();
+})()
 
 let mainWindow
 let uploadWindow
@@ -60,7 +47,7 @@ function showMinimizedTrayNotification() {
   }).show()
 }
 
-function createWindow() {
+function createWindow(hidden = false) {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 900,
@@ -77,7 +64,9 @@ function createWindow() {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    if (!hidden) {
+      mainWindow.show()
+    }
   })
 
   mainWindow.on('close', (event) => {
@@ -129,12 +118,17 @@ app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron')
 
   // Check for arguments passed when launching the app
-  const args = process.argv.slice(1);
-  const fileArgIndex = args.indexOf('--upload');
+  const args = process.argv.slice(1)
 
-  let filePath = null;
+  // Check if the app should start hidden
+  const hiddenArg = args.includes('--hidden')
+
+  // Handle file upload argument
+  const fileArgIndex = args.indexOf('--upload')
+  let filePath = null
+
   if (fileArgIndex > -1) {
-    filePath = args[fileArgIndex + 1]; // Get the file path
+    filePath = args[fileArgIndex + 1] // Get the file path
   }
 
   tray = new Tray(nativeImage.createFromPath(appIcon))
@@ -183,7 +177,7 @@ app.whenReady().then(() => {
   if (filePath) {
     openUploadWindow(filePath)
   } else {
-    createWindow()
+    createWindow(hiddenArg)
   }
 
   app.on('activate', function () {
@@ -235,6 +229,7 @@ function openUploadWindow(filePath = null) {
   })
 }
 
+// -----------------------------------------------------------------------------
 // IPC handler to enable and remove the context menu
 ipcMain.on('enable-context-menu', async (event) => {
   try {
@@ -242,18 +237,16 @@ ipcMain.on('enable-context-menu', async (event) => {
     saveContextMenuStatus(true)
     event.sender.send('enable-context-menu-response', { success: result })
   } catch (error) {
-    console.error('Failed to add macOS context menu:', error)
     event.sender.send('enable-context-menu-response', { success: false, error })
   }
 })
 ipcMain.on('remove-context-menu', async (event) => {
   try {
-    const result = await removeContextMenu(event);
-    saveContextMenuStatus(false);
-    event.sender.send('remove-context-menu-response', { success: result });
+    const result = await removeContextMenu(event)
+    saveContextMenuStatus(false)
+    event.sender.send('remove-context-menu-response', { success: result })
   } catch (error) {
-    console.error('Failed to remove macOS context menu:', error);
-    event.sender.send('remove-context-menu-response', { success: false, error });
+    event.sender.send('remove-context-menu-response', { success: false, error })
   }
 })
 ipcMain.on('check-context-menu', (event) => {
@@ -261,6 +254,7 @@ ipcMain.on('check-context-menu', (event) => {
   event.sender.send('check-context-menu-response', status)
 })
 
+// -----------------------------------------------------------------------------
 // IPC listeners for saving and loading API key
 ipcMain.on('save-api-key', (event, apiKey) => {
   const response = saveApiKey(apiKey)
@@ -271,6 +265,25 @@ ipcMain.on('load-api-key', (event) => {
   event.sender.send('load-api-key-response', apiKey)
 })
 
+// -----------------------------------------------------------------------------
+// IPC listeners for startup configuration
+ipcMain.on('configure-startup', async (event, add) => {
+  // add = true to add to startup, false to remove
+  try {
+    await configureStartup(add, app.getPath('exe'))
+    saveStartupStatus(add)
+    event.sender.send('configure-startup-response', { success: true })
+  } catch (error) {
+    console.error('Error configuring startup:', error)
+    event.sender.send('configure-startup-response', { success: false, error: error.message })
+  }
+})
+ipcMain.on('load-startup-status', (event) => {
+  const status = loadStartupStatus()
+  event.sender.send('load-startup-status-response', status)
+})
+
+// -----------------------------------------------------------------------------
 // Open a small upload window when triggered
 ipcMain.on('open-upload-window', () => {
   openUploadWindow()
@@ -280,5 +293,61 @@ ipcMain.on('open-upload-window', () => {
 ipcMain.on('close-upload-window', () => {
   if (uploadWindow) {
     uploadWindow.close()
+  }
+})
+
+ipcMain.on('start-upload', async (event, uploadData) => {
+  const { filePath, createPrivateLink, enablePassword, password, expiry } = uploadData
+
+  // Retrieve the API key from the store
+  const apiKey = loadApiKey()
+  if (!apiKey) {
+    console.error('API key not found. Please provide a valid API key.')
+    event.sender.send('upload-complete', false)
+    return
+  }
+
+  // Create the API client
+  const apiClient = createApiClient(apiKey)
+
+  // Initialize the upload handler
+  const uploadHandler = new ResumableUploadHandler(apiClient)
+
+  // Listen to upload progress and emit progress updates to renderer
+  uploadHandler.on('progress', ({ progress }) => {
+    console.log(`Upload progress: ${progress.toFixed(2)}%`)
+    event.sender.send('upload-progress', progress.toFixed(2)) // Emit progress as percentage
+  })
+
+  try {
+    // Start the file upload
+    await uploadHandler.simulateChunkUpload(filePath)
+
+    // Emit upload completion event
+    event.sender.send('upload-complete', true)
+
+    // // Example: Handle additional options like private link, password, or expiry here
+    // if (createPrivateLink) {
+    //   // Call your API to set file properties (e.g., make it private)
+    //   console.log(`Creating private link for file at: ${filePath}`)
+    //   // Add your implementation for private link creation
+    // }
+
+    // if (enablePassword) {
+    //   // Call your API to set the password for the uploaded file
+    //   console.log(`Setting password protection for file at: ${filePath}`)
+    //   // Add your implementation for setting password protection
+    // }
+
+    // if (expiry) {
+    //   // Call your API to set the file expiry time
+    //   console.log(`Setting expiry for file at: ${filePath}, expiry: ${expiry}`)
+    //   // Add your implementation for setting expiry
+    // }
+  } catch (error) {
+    console.error(`Error during file upload: ${error.message}`)
+
+    // Emit upload failure event
+    event.sender.send('upload-complete', false)
   }
 })
