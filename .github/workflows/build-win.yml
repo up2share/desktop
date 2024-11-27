@@ -28,18 +28,23 @@ jobs:
     - name: Build Electron app
       run: npm run build:win
 
-    # Create a release
     - name: Create release
       shell: bash
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         TAG=${{ github.ref_name }}
-        RELEASE_URL=$(curl -s -X POST \
+        RESPONSE=$(curl -s -X POST \
           -H "Authorization: token $GITHUB_TOKEN" \
           -H "Content-Type: application/json" \
           -d "{\"tag_name\": \"$TAG\", \"name\": \"$TAG\", \"body\": \"Release for $TAG\", \"draft\": false, \"prerelease\": false}" \
-          https://api.github.com/repos/${{ github.repository }}/releases | jq -r '.upload_url' | sed -e "s/{?name,label}//")
+          https://api.github.com/repos/${{ github.repository }}/releases)
+        echo "RESPONSE=$RESPONSE" # Debugging
+        RELEASE_URL=$(echo "$RESPONSE" | jq -r '.upload_url' | sed -e "s/{?name,label}//")
+        if [ -z "$RELEASE_URL" ]; then
+          echo "Error: Failed to get RELEASE_URL"
+          exit 1
+        fi
         echo "RELEASE_URL=$RELEASE_URL" >> $GITHUB_ENV
 
     # Upload build artifact to the release
