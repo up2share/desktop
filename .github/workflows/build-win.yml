@@ -30,6 +30,7 @@ jobs:
 
     # Create a release
     - name: Create release
+      shell: bash
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
