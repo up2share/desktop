@@ -15,8 +15,7 @@ import {
 } from './config'
 import { fetchShares, deleteShare } from './shares'
 import { configureStartup } from './startup'
-import { createApiClient, ResumableUploadHandler } from './upload'
-import path from 'path'
+import { createApiClient, ResumableUploadHandler, ShareHandler, FileHandler } from './api'
 
 // Initialize the app requirements
 ;(async () => {
@@ -321,29 +320,45 @@ ipcMain.on('start-upload', async (event, uploadData) => {
 
   try {
     // Start the file upload
-    await uploadHandler.simulateChunkUpload(filePath)
+    const { filename, fileId } = await uploadHandler.simulateChunkUpload(filePath)
 
     // Emit upload completion event
     event.sender.send('upload-complete', true)
 
-    // // Example: Handle additional options like private link, password, or expiry here
-    // if (createPrivateLink) {
-    //   // Call your API to set file properties (e.g., make it private)
-    //   console.log(`Creating private link for file at: ${filePath}`)
-    //   // Add your implementation for private link creation
-    // }
+    // Check if createPrivateLink is enabled
+    if (createPrivateLink) {
+      const shareHandler = new ShareHandler(apiClient)
+      console.log('Creating private link for file at:', filePath)
 
-    // if (enablePassword) {
-    //   // Call your API to set the password for the uploaded file
-    //   console.log(`Setting password protection for file at: ${filePath}`)
-    //   // Add your implementation for setting password protection
-    // }
+      const expiresAt = convertExpiryToDate(expiry)
+      // const expiresAt = null
 
-    // if (expiry) {
-    //   // Call your API to set the file expiry time
-    //   console.log(`Setting expiry for file at: ${filePath}, expiry: ${expiry}`)
-    //   // Add your implementation for setting expiry
-    // }
+      // Call the createShare method
+      try {
+        const shareData = await shareHandler.createShare(
+          fileId,
+          null,
+          enablePassword ? password : null,
+          expiresAt
+        )
+        const shareUrl = shareData.url
+
+        console.log('Private link created:', shareData)
+        event.sender.send('private-link-created', { shareUrl }) // Send share details to the renderer
+      } catch (err) {
+        console.error('Error creating private link:', err.message)
+        event.sender.send('private-link-error', err.message) // Notify renderer of error
+      }
+    } else {
+      console.log('Private link creation is disabled.')
+      const fileHandler = new FileHandler(apiClient)
+
+      // Get file url
+      const fileData = await fileHandler.getFile(fileId)
+
+      // Send file url to renderer
+      event.sender.send('file-uploaded-data', fileData)
+    }
   } catch (error) {
     console.error(`Error during file upload: ${error.message}`)
 
@@ -351,3 +366,39 @@ ipcMain.on('start-upload', async (event, uploadData) => {
     event.sender.send('upload-complete', false)
   }
 })
+
+function convertExpiryToDate(expiry) {
+  const now = new Date()
+
+  switch (expiry) {
+    case 'never':
+      return null // No expiry
+    case '24h':
+      now.setHours(now.getHours() + 24) // Add 24 hours
+      break
+    case '1w':
+      now.setDate(now.getDate() + 7) // Add 1 week
+      break
+    case '1m':
+      now.setMonth(now.getMonth() + 1)
+      break
+    case '6m':
+      now.setMonth(now.getMonth() + 6)
+      break
+    case '1y':
+      now.setFullYear(now.getFullYear() + 1)
+      break
+    default:
+      return null // Default to no expiry if not matched
+  }
+
+  // Format date as MySQL DATETIME (YYYY-MM-DD HH:MM:SS)
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0') // Ensure two digits
+  const day = String(now.getDate()).padStart(2, '0') // Ensure two digits
+  const hours = String(now.getHours()).padStart(2, '0') // Ensure two digits
+  const minutes = String(now.getMinutes()).padStart(2, '0') // Ensure two digits
+  const seconds = String(now.getSeconds()).padStart(2, '0') // Ensure two digits
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}

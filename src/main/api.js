@@ -16,6 +16,120 @@ export const createApiClient = (apiKey, timeout = 120) => {
   })
 }
 
+export class FileHandler {
+  constructor(apiClient) {
+    // super();
+    this.apiClient = apiClient
+  }
+
+  // Method to get file details by fileId
+  async getFile(fileId) {
+    try {
+      // Make the GET request to the /files/{fileId} endpoint
+      const response = await this.apiClient.get(`/files/${fileId}`)
+
+      if (response.status === 200) {
+        console.log(`File details retrieved successfully for file ID: ${fileId}`)
+        // this.emit('fileDetailsRetrieved', response.data); // Emit event for successful retrieval
+        return response.data // Return the file details (public_url, download_url)
+      } else {
+        throw new Error(`Failed to retrieve file details: ${response.status}`)
+      }
+    } catch (err) {
+      console.error(`Error retrieving file details: ${err.message}`)
+      // this.emit('error', err.message); // Emit error event
+      throw err // Rethrow error
+    }
+  }
+}
+
+// Sharing handler
+export class ShareHandler extends EventEmitter {
+  constructor(apiClient) {
+    super()
+    this.apiClient = apiClient
+  }
+
+  // Method to validate expiresAt
+  static _validateExpiresAt(expiresAt) {
+    const currentDate = new Date()
+    const expirationDate = new Date(expiresAt)
+
+    if (expirationDate <= currentDate) {
+      throw new Error('Expiration date must be greater than the current date')
+    }
+  }
+
+  // Method to create a new share
+  async createShare(fileId, targetId = null, password = null, expiresAt = null) {
+    // Validate expiresAt if provided
+    if (expiresAt) {
+      try {
+        ShareHandler._validateExpiresAt(expiresAt)
+      } catch (err) {
+        console.error('Invalid expiration date:', err.message)
+        this.emit('error', err.message) // Emit error event
+        throw err // Rethrow error to stop the process
+      }
+    }
+
+    const body = {
+      file_id: fileId,
+      target_id: targetId, // nullable
+      password: password, // nullable
+      expires_at: expiresAt // optional
+    }
+
+    try {
+      const response = await this.apiClient.post('/shares', body)
+
+      if (response.status === 201) {
+        console.log(`Share created successfully for file ID: ${fileId}`)
+        this.emit('shareCreated', response.data) // Emit share created event
+        return response.data // Return share data
+      } else {
+        throw new Error(`Failed to create share: ${response.status}`)
+      }
+    } catch (err) {
+      console.error(`Error creating share: ${err.message} ${err.response.data}`)
+      this.emit('error', err.message) // Emit error event
+      throw err
+    }
+  }
+
+  // Method to retrieve an existing share by its ID
+  async getShareById(shareId) {
+    try {
+      const response = await this.apiClient.get(`/shares/${shareId}`)
+      if (response.status === 200) {
+        console.log(`Share retrieved successfully for share ID: ${shareId}`)
+        return response.data // Return share data
+      } else {
+        throw new Error(`Failed to retrieve share: ${response.status}`)
+      }
+    } catch (err) {
+      console.error(`Error retrieving share: ${err.message}`)
+      throw err
+    }
+  }
+
+  // Method to delete an existing share by its ID
+  async deleteShare(shareId) {
+    try {
+      const response = await this.apiClient.delete(`/shares/${shareId}`)
+      if (response.status === 200) {
+        console.log(`Share deleted successfully for share ID: ${shareId}`)
+        return response.data // Return deletion confirmation
+      } else {
+        throw new Error(`Failed to delete share: ${response.status}`)
+      }
+    } catch (err) {
+      console.error(`Error deleting share: ${err.message}`)
+      throw err
+    }
+  }
+}
+
 // Resumable upload handler
 export class ResumableUploadHandler extends EventEmitter {
   constructor(apiClient, maxRetries = 4) {

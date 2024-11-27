@@ -109,8 +109,8 @@ onMounted(() => {
       <ul class="space-y-2">
         <li v-for="category in categories" :key="category.id">
           <button
-            @click="scrollToCategory(category.id)"
             class="w-full text-left p-2 bg-gray-100 hover:bg-blue-100 rounded-lg text-gray-700 font-medium"
+            @click="scrollToCategory(category.id)"
           >
             {{ category.name }}
           </button>
@@ -118,8 +118,8 @@ onMounted(() => {
         <!-- Quit -->
         <li>
           <button
-            @click="quitApp"
             class="w-full text-left p-2 bg-gray-100 hover:bg-red-100 rounded-lg text-red-700 font-medium"
+            @click="quitApp"
           >
             Close & Quit
           </button>
@@ -131,21 +131,25 @@ onMounted(() => {
     <main class="flex-1 overflow-y-auto p-6">
       <!-- General Settings -->
       <section id="general" class="mb-12">
-
         <h2 class="text-2xl font-semibold text-gray-700 mb-4">General Settings</h2>
         <div class="mb-6">
           <!-- Alert for missing API key -->
-          <div v-if="!isApiKeySet()" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
+          <div
+            v-if="!isApiKeySet()"
+            class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4"
+          >
             <strong class="font-bold">Warning:</strong> API Key is missing.
           </div>
 
           <label for="apiKey" class="block text-lg font-medium text-gray-700 mb-2">API Key</label>
           <p class="text-sm text-gray-500 mb-3">
-            The API key is generated from your account at <a href="https://up2sha.re/account/api" target="_blank" class="text-blue-500 underline">Up2Sha.re API</a>. Paste it below to authenticate.
+            The API key is generated from your account at
+            <a href="https://up2sha.re/account/api" target="_blank" class="text-blue-500 underline"
+              >Up2Sha.re API</a
+            >. Paste it below to authenticate.
           </p>
 
           <div class="flex items-center space-x-2">
-
             <input
               id="apiKey"
               v-model="apiKey"
@@ -156,21 +160,19 @@ onMounted(() => {
 
             <!-- Toggle Visibility -->
             <button
-              @click="toggleApiKeyVisibility"
               class="text-sm text-blue-500 underline hover:text-blue-700"
+              @click="toggleApiKeyVisibility"
             >
               {{ isApiKeyVisible ? 'Hide' : 'Show' }}
             </button>
-
           </div>
 
           <button
-            @click="saveApiKey"
             class="mt-3 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+            @click="saveApiKey"
           >
             Save API Key
           </button>
-
         </div>
       </section>
 
@@ -207,11 +209,11 @@ onMounted(() => {
       <section id="about">
         <h2 class="text-2xl font-semibold text-gray-700 mb-4">About</h2>
         <p class="text-sm text-gray-500 mb-4">
-          This application is powered by Electron, allowing you to use web technologies to build cross-platform desktop apps.
+          This application is powered by Electron, allowing you to use web technologies to build
+          cross-platform desktop apps.
         </p>
         <Versions />
       </section>
-
     </main>
   </div>
 </template>
