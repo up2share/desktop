@@ -1,14 +1,14 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import Shares from './components/Shares.vue'
 import UploadSection from './components/UploadSection.vue'
 import Startup from './components/Startup.vue'
+import Versions from './components/Versions.vue'
 
 // Reactive variables for form data
 const apiKey = ref('')
-const isApiKeyVisible = ref(false);
+const isApiKeyVisible = ref(false)
 const contextMenuEnabled = ref(true)
-const versions = reactive({ ...window.electron.process.versions })
 
 // Categories for the sidebar and option sections
 const categories = [
@@ -17,7 +17,7 @@ const categories = [
   { id: 'context-menu', name: 'Context Menu' },
   { id: 'shares', name: 'Recent Shares' },
   { id: 'startup', name: 'Startup' },
-  { id: 'about', name: 'About' },
+  { id: 'about', name: 'About' }
 ]
 
 // Scroll to the section when a category is clicked
@@ -209,11 +209,7 @@ onMounted(() => {
         <p class="text-sm text-gray-500 mb-4">
           This application is powered by Electron, allowing you to use web technologies to build cross-platform desktop apps.
         </p>
-        <ul class="versions bg-gray-100 p-4 rounded-lg">
-          <li class="electron-version text-gray-700">Electron v{{ versions.electron }}</li>
-          <li class="chrome-version text-gray-700">Chromium v{{ versions.chrome }}</li>
-          <li class="node-version text-gray-700">Node v{{ versions.node }}</li>
-        </ul>
+        <Versions />
       </section>
 
     </main>
