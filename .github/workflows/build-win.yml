@@ -1,0 +1,56 @@
+name: Build and Release for Windows
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on tags starting with 'v'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    # Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Set up Node.js environment
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 24
+
+    # Install dependencies
+    - name: Install dependencies
+      run: npm install
+
+    # Build the Electron app for Windows
+    - name: Build Electron app
+      run: npm run build:win
+
+    # Create a release
+    - name: Create release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG=${{ github.ref_name }}
+        RELEASE_URL=$(curl -s -X POST \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "{\"tag_name\": \"$TAG\", \"name\": \"$TAG\", \"body\": \"Release for $TAG\", \"draft\": false, \"prerelease\": false}" \
+          https://api.github.com/repos/${{ github.repository }}/releases | jq -r '.upload_url' | sed -e "s/{?name,label}//")
+        echo "RELEASE_URL=$RELEASE_URL" >> $GITHUB_ENV
+
+    # Upload build artifact to the release
+    - name: Upload artifact
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE_URL: ${{ env.RELEASE_URL }}
+      run: |
+        for file in dist/*.exe; do
+          curl -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"$file" \
+            "$RELEASE_URL?name=$(basename "$file")"
+        done
