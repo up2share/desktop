@@ -61,3 +61,22 @@ jobs:
             --data-binary @"$file" \
             "$RELEASE_URL?name=$(basename "$file")"
         done
+
+    # Upload latest.yml to the release (this is used by the auto-updater)
+    - name: Upload latest.yml
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE_URL: ${{ env.RELEASE_URL }}
+      run: |
+        FILE="dist/latest.yml"
+        if [ -f "$FILE" ]; then
+          curl -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"$FILE" \
+            "$RELEASE_URL?name=$(basename "$FILE")"
+        else
+          echo "Error: $FILE not found"
+          exit 1
+        fi

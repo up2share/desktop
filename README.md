@@ -32,3 +32,12 @@ $ npm run build:mac
 # For Linux
 $ npm run build:linux
 ```
+
+### Deploy new version
+
+For this we simply need to create a new tag and push it to the repository. Github Actions will take care of the rest.
+
+```bash
+$ git tag -a v1.0.0 -m "First release"
+$ git push origin v1.0.0
+```

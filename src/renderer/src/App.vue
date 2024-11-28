@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import Shares from './components/Shares.vue'
 import UploadSection from './components/UploadSection.vue'
 import Startup from './components/Startup.vue'
@@ -98,6 +98,22 @@ const isApiKeySet = () => {
 onMounted(() => {
   loadApiKey()
   checkContextMenu()
+
+  window.electron.ipcRenderer.on('update-ready', () => {
+    const restartNow = confirm('An update is ready to install. Restart the app now?')
+    if (restartNow) {
+      window.electron.ipcRenderer.send('restart-app')
+    }
+  })
+
+  window.electron.ipcRenderer.on('update-downloaded', () => {
+    console.log('Update is downloaded and ready.')
+  })
+})
+
+onBeforeUnmount(() => {
+  window.electron.ipcRenderer.removeAllListeners('update-ready')
+  window.electron.ipcRenderer.removeAllListeners('update-downloaded')
 })
 </script>
 

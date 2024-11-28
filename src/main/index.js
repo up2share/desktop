@@ -1,4 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -89,6 +90,25 @@ function createWindow(hidden = false) {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  // Check for updates
+  // --------------------------------------------------------------
+  autoUpdater.checkForUpdatesAndNotify()
+  autoUpdater.on('update-available', (info) => {
+    console.log('Update available:', info)
+  })
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('Update downloaded:', info)
+    mainWindow.webContents.send('update-downloaded')
+    mainWindow.webContents.send('update-ready')
+  })
+  autoUpdater.on('error', (error) => {
+    console.error('Error in auto-updater:', error)
+  })
+  ipcMain.on('restart-app', () => {
+    autoUpdater.quitAndInstall()
+  })
+  // --------------------------------------------------------------
 
   // Handle IPC event to quit the app
   ipcMain.on('quit-app', () => {
