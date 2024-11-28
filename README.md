@@ -41,3 +41,9 @@ For this we simply need to create a new tag and push it to the repository. Githu
 $ git tag -a v1.0.0 -m "First release"
 $ git push origin v1.0.0
 ```
+
+If you want to remove the tag locally:
+
+```bash
+$ git tag -d v1.0.0
+```
