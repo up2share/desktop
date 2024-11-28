@@ -30,7 +30,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         npm run build:win
-        electron-builder -p onTag
+        npm run publish
 
     # # Build the Electron app for Windows
     # - name: Build Electron app
