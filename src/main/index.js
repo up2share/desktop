@@ -106,6 +106,7 @@ function createWindow(hidden = false) {
     console.error('Error in auto-updater:', error)
   })
   ipcMain.on('restart-app', () => {
+    allowQuit = true // Set flag to allow application to quit
     autoUpdater.quitAndInstall()
   })
   // --------------------------------------------------------------
