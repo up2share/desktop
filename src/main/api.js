@@ -225,7 +225,7 @@ export class ResumableUploadHandler extends EventEmitter {
     }
   }
 
-  async simulateChunkUpload(filePath, chunkSize = 10 * 1024 * 1024) {
+  async simulateChunkUpload(filePath, chunkSize = 50 * 1024 * 1024) {
     let stats
     try {
       stats = fs.statSync(filePath)
@@ -290,68 +290,4 @@ export class ResumableUploadHandler extends EventEmitter {
       }
     }
   }
-
-  // async simulateChunkUpload(filePath, chunkSize = 10 * 1024 * 1024) {
-  //   let stats
-  //   try {
-  //     stats = fs.statSync(filePath)
-  //   } catch (err) {
-  //     console.error(`Failed to access file: ${filePath}. Error: ${err.message}`)
-  //     this.emit('error', `File access error: ${err.message}`)
-  //     throw err
-  //   }
-
-  //   const totalSize = stats.size
-  //   // const filename = filePath.split('/').pop()
-  //   // TODO: WINDOWS ONLY!!!
-  //   const filename = filePath.split('\\').pop()
-
-  //   console.log(`Starting upload for file: ${filename} (${totalSize} bytes)`)
-  //   const { uploadUri, uploadKey } = await this._startUpload(filename, totalSize)
-
-  //   console.log('Upload initiated:', uploadUri, uploadKey)
-
-  //   let chunkStart = 0
-  //   const fileStream = fs.createReadStream(filePath, { highWaterMark: chunkSize })
-
-  //   let result
-  //   for await (const chunk of fileStream) {
-  //     const chunkEnd = Math.min(chunkStart + chunk.length - 1, totalSize - 1)
-  //     result = await this._uploadChunk(uploadUri, totalSize, chunk, chunkStart, chunkEnd)
-
-  //     // Emit progress event
-  //     const progress = ((chunkEnd + 1) / totalSize) * 100
-  //     this.emit('progress', { progress, chunkStart, chunkEnd })
-
-  //     chunkStart = chunkEnd + 1
-  //   }
-
-  //   // Upload completed, retrieve file ID from Location header
-  //   const locationHeader = result['location']
-  //   const fileId = this._extractFileIdFromLocation(locationHeader)
-
-  //   console.log(`Upload completed for file: ${filename} (ID: ${fileId})`)
-  //   this.emit('completed', { filename, fileId })
-  // }
 }
-
-// IPC Event Listener
-// ipcMain.on('upload-file', async (event, filePath) => {
-//   const apiClient = createApiClient()
-//   const uploadHandler = new ResumableUploadHandler(apiClient)
-
-//   uploadHandler.on('progress', ({ progress }) => {
-//     event.reply('upload-progress', { progress })
-//   })
-
-//   uploadHandler.on('completed', ({ filename }) => {
-//     event.reply('upload-complete', `File uploaded successfully: ${filename}`)
-//   })
-
-//   try {
-//     await uploadHandler.simulateChunkUpload(filePath)
-//   } catch (err) {
-//     console.error(`Error uploading file: ${err.message}`)
-//     event.reply('upload-error', `Error uploading file: ${err.message}`)
-//   }
-// })
