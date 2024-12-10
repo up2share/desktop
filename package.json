@@ -37,7 +37,7 @@
     "autoprefixer": "^10.4.20",
     "axios": "^1.7.8",
     "electron": "^31.0.2",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "^25.1.8",
     "electron-vite": "^2.3.0",
     "eslint": "^8.57.0",
     "eslint-plugin-vue": "^9.32.0",
