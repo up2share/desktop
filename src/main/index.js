@@ -3,6 +3,7 @@ import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import * as Sentry from '@sentry/electron/main'
+import { initialize, trackEvent } from '@aptabase/electron/main'
 import icon from '../../resources/icon.png?asset'
 import appIcon from '../../build/icon.ico?asset'
 import { createContextMenu, removeContextMenu } from './context-menu'
@@ -24,6 +25,11 @@ if (is.prod && process.env['SENTRY_DSN']) {
   Sentry.init({
     dsn: process.env['SENTRY_DSN']
   })
+}
+
+// Init Aptabase Electron
+if (is.prod && process.env['APTABASE_APP_ID']) {
+  initialize(process.env['APTABASE_APP_ID'])
 }
 
 // Initialize the app requirements
@@ -142,6 +148,8 @@ function createWindow(hidden = false) {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  trackEvent('app_started') // Track app start event
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 

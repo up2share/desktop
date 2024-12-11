@@ -29,6 +29,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        VITE_APTABASE_APP_ID: ${{ secrets.APTABASE_APP_ID }}
       run: |
         npm run build:win
         npm run publish
