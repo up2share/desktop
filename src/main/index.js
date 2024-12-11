@@ -21,14 +21,14 @@ import { configureStartup } from './startup'
 import { createApiClient, ResumableUploadHandler, ShareHandler, FileHandler } from './api'
 
 // Initialize Sentry for error tracking
-if (is.prod && process.env['VITE_SENTRY_DSN']) {
+if (!is.dev && process.env['VITE_SENTRY_DSN']) {
   Sentry.init({
     dsn: process.env['VITE_SENTRY_DSN']
   })
 }
 
 // Init Aptabase Electron
-if (is.prod && process.env['VITE_APTABASE_APP_ID']) {
+if (!is.dev && process.env['VITE_APTABASE_APP_ID']) {
   initialize(process.env['VITE_APTABASE_APP_ID'])
 }
 
