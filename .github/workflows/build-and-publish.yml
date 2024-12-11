@@ -28,6 +28,7 @@ jobs:
     - name: Build and publish Electron app
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
       run: |
         npm run build:win
         npm run publish

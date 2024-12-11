@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notificati
 import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import * as Sentry from '@sentry/electron/main'
 import icon from '../../resources/icon.png?asset'
 import appIcon from '../../build/icon.ico?asset'
 import { createContextMenu, removeContextMenu } from './context-menu'
@@ -17,6 +18,13 @@ import {
 import { fetchShares, deleteShare } from './shares'
 import { configureStartup } from './startup'
 import { createApiClient, ResumableUploadHandler, ShareHandler, FileHandler } from './api'
+
+// Initialize Sentry for error tracking
+if (is.prod && process.env['SENTRY_DSN']) {
+  Sentry.init({
+    dsn: process.env['SENTRY_DSN']
+  })
+}
 
 // Initialize the app requirements
 ;(async () => {
