@@ -12,6 +12,7 @@ const uploadComplete = ref(false) // Track upload completion
 const filePublicLink = ref('') // Store the public link
 const privateLink = ref('') // Store the private link
 const errorMessage = ref('') // Store error message
+const isUploading = ref(false) // Track uploading status
 
 // Listen for the data when the component is mounted
 onMounted(() => {
@@ -70,6 +71,8 @@ async function handleFileUpload() {
   }
 
   // ---------------------
+  isUploading.value = true // Start uploading
+
   // Prepare upload data
   const uploadData = {
     filePath: selectedFile.value.path || selectedFile.value.name,
@@ -107,6 +110,7 @@ async function handleFileUpload() {
     // alert(`Error: ${error.message}`)
     errorMessage.value = `Error: ${error.message}` // Set error message
   } finally {
+    isUploading.value = false // End uploading
     // Reset progress after upload
     uploadProgress.value = 0
   }
@@ -138,7 +142,7 @@ function copyToClipboard() {
       <h3 class="text-lg font-semibold text-gray-700 mb-4">Upload File</h3>
       <form v-if="!uploadComplete" class="w-full space-y-4" @submit.prevent="handleFileUpload">
         <!-- File Input -->
-        <div>
+        <div v-if="!isUploading">
           <label for="file-input" class="block text-sm font-medium text-gray-700 mb-1"
             >Select File</label
           >
@@ -149,9 +153,12 @@ function copyToClipboard() {
             @change="onFileChange"
           />
         </div>
+        <div v-else>
+          <p class="text-center text-gray-700">Uploading file... {{ selectedFile.name }}</p>
+        </div>
 
         <!-- Private Share Switch -->
-        <div class="flex items-center space-x-2">
+        <div v-if="!isUploading" class="flex items-center space-x-2">
           <input
             id="create-private-link"
             v-model="createPrivateLink"
@@ -164,7 +171,7 @@ function copyToClipboard() {
         </div>
 
         <!-- Password Fields -->
-        <div v-if="createPrivateLink" class="space-y-2">
+        <div v-if="createPrivateLink && !isUploading" class="space-y-2">
           <div class="flex items-center space-x-2">
             <input
               id="enable-password"
@@ -176,7 +183,7 @@ function copyToClipboard() {
               Protect with Password
             </label>
           </div>
-          <div v-if="enablePassword" class="space-y-2">
+          <div v-if="enablePassword && !isUploading" class="space-y-2">
             <div>
               <label for="password" class="block text-sm font-medium text-gray-700 mb-1"
                 >Password</label
@@ -205,7 +212,7 @@ function copyToClipboard() {
         </div>
 
         <!-- Expiry Date (only visible if "Create Private Share Link" is checked) -->
-        <div v-if="createPrivateLink">
+        <div v-if="createPrivateLink && !isUploading">
           <label for="expiry" class="block text-sm font-medium text-gray-700 mb-1"
             >Expiry Date</label
           >
@@ -224,7 +231,7 @@ function copyToClipboard() {
         </div>
 
         <!-- Progress Bar -->
-        <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+        <div v-if="isUploading" class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
           <div
             id="progress-bar"
             class="h-full bg-blue-500 transition-all"
@@ -240,6 +247,7 @@ function copyToClipboard() {
         <!-- Buttons -->
         <div class="flex items-center justify-end space-x-4">
           <button
+            v-if="isUploading"
             type="button"
             class="border border-red-500 text-red-500 py-2 px-4 rounded-lg hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-400"
             @click="cancelUpload"
@@ -249,8 +257,9 @@ function copyToClipboard() {
           <button
             type="submit"
             class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            :disabled="isUploading"
           >
-            Send
+            {{ isUploading ? 'Uploading...' : 'Send' }}
           </button>
         </div>
       </form>
