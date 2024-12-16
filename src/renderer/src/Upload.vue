@@ -118,6 +118,8 @@ async function handleFileUpload() {
 
 function cancelUpload() {
   window.electron.ipcRenderer.send('close-upload-window')
+
+  // TODO: Reset all form fields, progress, and state?
 }
 
 function copyToClipboard() {

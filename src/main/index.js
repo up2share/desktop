@@ -21,15 +21,15 @@ import { configureStartup } from './startup'
 import { createApiClient, ResumableUploadHandler, ShareHandler, FileHandler } from './api'
 
 // Initialize Sentry for error tracking
-if (!is.dev && process.env['VITE_SENTRY_DSN']) {
+if (!is.dev && import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
-    dsn: process.env['VITE_SENTRY_DSN']
+    dsn: import.meta.env.VITE_SENTRY_DSN
   })
 }
 
 // Init Aptabase Electron
-if (!is.dev && process.env['VITE_APTABASE_APP_ID']) {
-  initialize(process.env['VITE_APTABASE_APP_ID'])
+if (!is.dev && import.meta.env.VITE_APTABASE_APP_ID) {
+  initialize(import.meta.env.VITE_APTABASE_APP_ID)
 }
 
 // Initialize the app requirements
@@ -322,18 +322,22 @@ ipcMain.on('load-startup-status', (event) => {
 // -----------------------------------------------------------------------------
 // Open a small upload window when triggered
 ipcMain.on('open-upload-window', () => {
+  trackEvent('open_upload_window') // Track event
   openUploadWindow()
 })
 
 // Handle IPC event to close the upload window
 ipcMain.on('close-upload-window', () => {
   if (uploadWindow) {
+    trackEvent('close_upload_window') // Track event
     uploadWindow.close()
   }
 })
 
 ipcMain.on('start-upload', async (event, uploadData) => {
   const { filePath, createPrivateLink, enablePassword, password, expiry } = uploadData
+
+  trackEvent('start_upload', { createPrivateLink, enablePassword, expiry }) // Track event
 
   // Retrieve the API key from the store
   const apiKey = loadApiKey()
@@ -368,7 +372,6 @@ ipcMain.on('start-upload', async (event, uploadData) => {
       console.log('Creating private link for file at:', filePath)
 
       const expiresAt = convertExpiryToDate(expiry)
-      // const expiresAt = null
 
       // Call the createShare method
       try {
