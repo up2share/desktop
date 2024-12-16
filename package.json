@@ -35,7 +35,7 @@
     "@electron-toolkit/eslint-config": "^1.0.2",
     "@rushstack/eslint-patch": "^1.10.3",
     "@vitejs/plugin-vue": "^5.2.1",
-    "@vue/eslint-config-prettier": "^9.0.0",
+    "@vue/eslint-config-prettier": "^10.1.0",
     "autoprefixer": "^10.4.20",
     "axios": "^1.7.9",
     "electron": "^31.0.2",
