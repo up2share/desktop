@@ -16,8 +16,8 @@ import {
   saveApiKey,
   loadApiKey
 } from './config'
-import { fetchShares, deleteShare } from './shares'
 import { configureStartup } from './startup'
+// import { startClipboardMonitoring, stopClipboardMonitoring } from './clipboard'
 import { createApiClient, ResumableUploadHandler, ShareHandler, FileHandler } from './api'
 
 // Initialize Sentry for error tracking
@@ -134,13 +134,43 @@ function createWindow(hidden = false) {
 
   // Listen for the event to load recent shares
   ipcMain.on('fetch-recent-shares', async (event, page = 1) => {
-    const response = await fetchShares(page)
+    const apiKey = loadApiKey()
+    if (!apiKey) {
+      const response = { success: false, error: 'API key not found. Please set it first.' }
+      event.sender.send('fetch-recent-shares-response', response)
+      return
+    }
+
+    const shareHandler = new ShareHandler(createApiClient(apiKey))
+
+    let response
+    try {
+      const data = await shareHandler.fetchShares(page)
+      response = { success: true, data }
+    } catch (error) {
+      response = { success: false, error: error.message }
+    }
     event.sender.send('fetch-recent-shares-response', response)
   })
 
   // IPC handler for deleting a share
   ipcMain.on('delete-share', async (event, shareId) => {
-    const response = await deleteShare(shareId)
+    const apiKey = loadApiKey()
+    if (!apiKey) {
+      const response = { success: false, error: 'API key not found. Please set it first.' }
+      event.sender.send('delete-share-response', response)
+      return
+    }
+
+    const shareHandler = new ShareHandler(createApiClient(apiKey))
+
+    let response
+    try {
+      await shareHandler.deleteShare(shareId)
+      response = { success: true }
+    } catch (error) {
+      response = { success: false, error: error.message }
+    }
     event.sender.send('delete-share-response', response)
   })
 }
@@ -214,6 +244,9 @@ app.whenReady().then(() => {
   if (filePath) {
     openUploadWindow(filePath)
   } else {
+    // Clipboard monitoring
+    // startClipboardMonitoring(openUploadWindow, 5000)
+
     createWindow(hiddenArg)
   }
 

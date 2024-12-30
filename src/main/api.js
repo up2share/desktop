@@ -6,13 +6,16 @@ import fs from 'fs'
 const UP2SHARE_API_BASE = 'https://api.up2sha.re'
 
 // Helper to create API client instance
-export const createApiClient = (apiKey, timeout = 120) => {
+export const createApiClient = (authToken, timeout = 120) => {
+  const isApiKey = authToken.length === 32 // Check if it's an API key or PAT
+  const headers = {
+    [isApiKey ? 'X-Api-Key' : 'Authorization']: isApiKey ? authToken : `Bearer ${authToken}`
+  }
+
   return axios.create({
     baseURL: UP2SHARE_API_BASE,
     timeout: timeout * 1000,
-    headers: {
-      'X-Api-Key': `${apiKey}`
-    }
+    headers
   })
 }
 
@@ -97,6 +100,23 @@ export class ShareHandler extends EventEmitter {
     }
   }
 
+  async fetchShares(page = 1) {
+    try {
+      const response = await this.apiClient.get(
+        `/shares?page=${page}&include=file&orderBy=id&sortedBy=desc`
+      )
+      if (response.status === 200) {
+        return response.data
+      } else {
+        throw new Error(`Failed to fetch shares: ${response.status}`)
+      }
+      // return { success: true, data: response.data };
+    } catch (err) {
+      console.error(`Error fetching shares: ${err.message}`)
+      throw err
+    }
+  }
+
   // Method to retrieve an existing share by its ID
   async getShareById(shareId) {
     try {
@@ -117,7 +137,7 @@ export class ShareHandler extends EventEmitter {
   async deleteShare(shareId) {
     try {
       const response = await this.apiClient.delete(`/shares/${shareId}`)
-      if (response.status === 200) {
+      if (response.status === 204) {
         console.log(`Share deleted successfully for share ID: ${shareId}`)
         return response.data // Return deletion confirmation
       } else {
